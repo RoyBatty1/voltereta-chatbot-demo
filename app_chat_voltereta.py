@@ -1,13 +1,20 @@
 import streamlit as st
 from openai import OpenAI
 import urllib.request
+import os
 
-faiss_path = "index.faiss"
-if not os.path.exists(faiss_path):
-    url = "https://drive.google.com/uc?export=download&id=1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
-    urllib.request.urlretrieve(url, faiss_path)
+index_file = "index.faiss"
+file_id = "1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
+download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
-index = faiss.read_index(faiss_path)
+if not os.path.exists(index_file):
+    print("Descargando el archivo FAISS desde Google Drive...")
+    urllib.request.urlretrieve(download_url, index_file)
+    print("Descarga completada.")
+
+import faiss
+index = faiss.read_index(index_file)
+
 
 import pickle
 from sentence_transformers import SentenceTransformer
