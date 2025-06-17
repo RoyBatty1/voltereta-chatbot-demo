@@ -14,8 +14,7 @@ client = OpenAI(api_key="sk-proj-DNhzHcEQqRRbLJulnxbksb_4EoEW54xRI6CaUeLg5kfDLDh
 
 # --- DESCARGA DEL ÍNDICE FAISS DESDE GOOGLE DRIVE ---
 index_file = "index.faiss"
-file_id = "1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
-download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
+download_url = "https://drive.google.com/uc?export=download&id=1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
 
 if not os.path.exists(index_file):
     st.write("📥 Descargando el archivo FAISS desde Google Drive...")
