@@ -10,7 +10,7 @@ import json
 
 # --- CONFIGURACIÓN GENERAL ---
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key="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")
 
 # --- DESCARGA DEL ÍNDICE FAISS DESDE GOOGLE DRIVE ---
 index_file = "index.faiss"
