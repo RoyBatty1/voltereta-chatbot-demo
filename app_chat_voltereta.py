@@ -9,7 +9,12 @@ download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
 if not os.path.exists(index_file):
     print("Descargando el archivo FAISS desde Google Drive...")
-    urllib.request.urlretrieve(download_url, index_file)
+    req = urllib.request.Request(
+        download_url,
+        headers={"User-Agent": "Mozilla/5.0"}
+    )
+    with urllib.request.urlopen(req) as response, open(index_file, 'wb') as out_file:
+        out_file.write(response.read())
     print("Descarga completada.")
 
 import faiss
