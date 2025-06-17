@@ -18,12 +18,17 @@ file_id = "1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
 download_url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
 if not os.path.exists(index_file):
+    st.write("📥 Descargando el archivo FAISS desde Google Drive...")
     req = urllib.request.Request(
         download_url,
         headers={"User-Agent": "Mozilla/5.0"}
     )
     with urllib.request.urlopen(req) as response, open(index_file, 'wb') as out_file:
         out_file.write(response.read())
+    st.write("✅ Descarga completada.")
+
+if os.path.exists(index_file):
+    st.write("📦 Tamaño del índice FAISS descargado:", os.path.getsize(index_file), "bytes")
 
 index = faiss.read_index(index_file)
 model = SentenceTransformer("all-MiniLM-L6-v2")
