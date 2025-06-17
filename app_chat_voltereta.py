@@ -1,6 +1,14 @@
 import streamlit as st
 from openai import OpenAI
-import faiss
+import urllib.request
+
+faiss_path = "index.faiss"
+if not os.path.exists(faiss_path):
+    url = "https://drive.google.com/uc?export=download&id=1NPW3J-coWBt_7Nts-jZkxt19F92JpdAP"
+    urllib.request.urlretrieve(url, faiss_path)
+
+index = faiss.read_index(faiss_path)
+
 import pickle
 from sentence_transformers import SentenceTransformer
 import gspread
