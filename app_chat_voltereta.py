@@ -30,7 +30,10 @@ if not os.path.exists(index_file):
 
 # --- CARGA DE GOOGLE SHEETS ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_json = json.loads(os.getenv("GOOGLE_SHEETS_CREDENTIALS"))
+with open("credentials.json") as f:
+    creds_json = json.load(f)
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
+
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 client_gs = gspread.authorize(creds)
 sheet = client_gs.open_by_url("https://docs.google.com/spreadsheets/d/13Xl5wqYv1zPWJhAGeVfW32el-_Bm3N25bO9scjQTKas/edit#gid=0")
