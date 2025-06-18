@@ -40,7 +40,7 @@ with open("credentials.json") as f:
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_json, scope)
 
 client_gs = gspread.authorize(creds)
-sheet = client_gs.open_by_url("https://docs.google.com/spreadsheets/d/13Xl5wqYv1zPWJhAGeVfW32el-_Bm3N25bO9scjQTKas/edit#gid=0")
+sheet = client_gs.open_by_url("https://docs.google.com/spreadsheets/d/1xyijzryEyTp4vBzuDg4CPDMsvHX-E9PUvipXJiG-gPU/edit?gid=0")
 data = sheet.get_worksheet(0).get_all_records()
 
 # --- FUNCIÓN DE OVERRIDE ---
