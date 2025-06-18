@@ -1,6 +1,7 @@
 streamlit
-openai
+openai>=1.0.0
 faiss-cpu
 sentence-transformers
 gspread
 oauth2client
+requests
