@@ -12,9 +12,9 @@ import json
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
 client = OpenAI(api_key="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")
 
-# --- DESCARGA DEL ÍNDICE FAISS DESDE GCS ---
-index_file = "index.faiss"
-download_url = "https://storage.googleapis.com/voltereta-chatbot-assets/index.faiss"
+# --- DESCARGA DEL ÍNDICE FAISS COMPATIBLE DESDE GCS ---
+index_file = "index_streamlit_compatible.faiss"
+download_url = "https://storage.googleapis.com/voltereta-chatbot-assets/index_streamlit_compatible.faiss"
 
 if not os.path.exists(index_file):
     st.write("📥 Descargando el archivo FAISS desde GCS...")
