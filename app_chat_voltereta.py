@@ -8,6 +8,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import json
 
+st.write("API Key detectada:", st.secrets["OPENAI_API_KEY"][:10] + "...")
+
 # --- CONFIGURACIÓN GENERAL ---
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
