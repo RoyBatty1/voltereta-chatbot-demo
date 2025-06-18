@@ -1,7 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import os
-import urllib.request
+import requests
 import faiss
 from sentence_transformers import SentenceTransformer
 import gspread
@@ -12,19 +12,19 @@ import json
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
 client = OpenAI(api_key="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")
 
-# --- DESCARGA DEL ÍNDICE FAISS COMPATIBLE DESDE GCS ---
+# --- DESCARGA DEL ÍNDICE FAISS COMPATIBLE DESDE GCS CON REQUESTS ---
 index_file = "index_streamlit_compatible.faiss"
 download_url = "https://storage.googleapis.com/voltereta-chatbot-assets/index_streamlit_compatible.faiss"
 
 if not os.path.exists(index_file):
-    st.write("📥 Descargando el archivo FAISS desde GCS...")
-    req = urllib.request.Request(
-        download_url,
-        headers={"User-Agent": "Mozilla/5.0"}
-    )
-    with urllib.request.urlopen(req) as response, open(index_file, 'wb') as out_file:
-        out_file.write(response.read())
-    st.write("✅ Descarga completada.")
+    st.write("📥 Descargando el archivo FAISS desde GCS con requests...")
+    r = requests.get(download_url)
+    if r.status_code == 200:
+        with open(index_file, "wb") as f:
+            f.write(r.content)
+        st.write("✅ Descarga completada.")
+    else:
+        st.error(f"❌ Error al descargar el archivo FAISS: {r.status_code}")
 
 if os.path.exists(index_file):
     st.write("📦 Tamaño del índice FAISS descargado:", os.path.getsize(index_file), "bytes")
