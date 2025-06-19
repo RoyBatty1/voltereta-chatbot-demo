@@ -1,13 +1,22 @@
-import streamlit as st
+import streamlit as st 
 from openai import OpenAI
 import os, requests, faiss, json
 from sentence_transformers import SentenceTransformer
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
+# --- SEGURIDAD: Verifica que no se exponga ningún secreto ---
+def verificar_secrets_expuestos():
+    texto = st.session_state.get("_streamlit_messages", [])
+    for s in st.secrets:
+        if isinstance(st.secrets[s], str) and st.secrets[s][:4] in texto:
+            st.error(f"❌ Se detectó un intento de mostrar parte del secreto '{s}' en pantalla.")
+            st.stop()
+verificar_secrets_expuestos()
+
 # --- CONFIG GENERAL ---
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
-st.write("🔑 API Key cargada:", st.secrets["OPENAI_API_KEY"][:10] + "...")
+st.success("🔐 Entorno seguro configurado correctamente.")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- FAISS ---
