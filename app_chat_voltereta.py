@@ -17,10 +17,30 @@ INDEX_URL = "https://storage.googleapis.com/voltereta-chatbot-assets/index_strea
 INDEX_PATH = "voltereta_index.faiss"
 METADATA_PATH = "voltereta_metadata.json"
 
-if not os.path.exists(INDEX_PATH):
-    urllib.request.urlretrieve(INDEX_URL, INDEX_PATH)
+import urllib.request
 
-index = faiss.read_index(INDEX_PATH)
+# Verificar y descargar el índice
+def descargar_index_faiss(url, destino):
+    try:
+        if not os.path.exists(destino):
+            st.write("📥 Descargando índice FAISS desde Google Cloud Storage...")
+            urllib.request.urlretrieve(url, destino)
+            st.write("✅ Descarga completada.")
+        else:
+            st.write("📦 Usando índice FAISS local ya existente.")
+    except Exception as e:
+        st.error(f"❌ Error al descargar el índice FAISS: {e}")
+        st.stop()
+
+descargar_index_faiss(INDEX_URL, INDEX_PATH)
+
+# Cargar el índice
+try:
+    index = faiss.read_index(INDEX_PATH)
+except Exception as e:
+    st.error(f"❌ Error al cargar el índice FAISS: {e}")
+    st.stop()
+
 
 with open(METADATA_PATH, "r", encoding="utf-8") as f:
     metadata = json.load(f)
