@@ -1,0 +1,1 @@
+git add logs.txt && git commit -m "Añadir trazas del chatbot" && git push
