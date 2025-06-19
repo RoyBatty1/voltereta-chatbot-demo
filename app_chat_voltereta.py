@@ -7,18 +7,24 @@ from oauth2client.service_account import ServiceAccountCredentials
 import requests
 from bs4 import BeautifulSoup
 
-# === CONFIG ===
-openai.api_key = "TU_API_KEY"
+# === CONFIGURACIÓN GENERAL ===
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 index = faiss.read_index("voltereta_index.faiss")
 with open("voltereta_metadata.json", "r", encoding="utf-8") as f:
     metadata = json.load(f)
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+# === GOOGLE SHEET (Overrides) ===
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-gc = gspread.authorize(ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope))
-sheet = gc.open_by_url("https://docs.google.com/spreadsheets/...").sheet1
+credentials_dict = st.secrets["gcp_service_account"]
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+gc = gspread.authorize(credentials)
+sheet = gc.open_by_url("https://docs.google.com/spreadsheets/d/1xyijzryEyTp4vBzuDg4CPDMsvHX-E9PUvipXJiG-gPU").sheet1
 
 LOG_PATH = "logs.txt"
+
+# === FUNCIONES AUXILIARES ===
 
 def log(pregunta, fuente):
     now = datetime.now().isoformat()
@@ -27,32 +33,33 @@ def log(pregunta, fuente):
 
 def buscar_override(p):
     for row in sheet.get_all_records():
-        if row.get("pregunta","").strip().lower() == p.strip().lower():
-            return row.get("respuesta","")
+        if row.get("pregunta", "").strip().lower() == p.strip().lower():
+            return row.get("respuesta", "")
     return None
 
 def filtrar_por_fecha_y_relevancia(I, D, metadata, max_meses=12, top_k=5):
     ahora = datetime.now()
-    limite = ahora - timedelta(days=30*max_meses)
+    limite = ahora - timedelta(days=30 * max_meses)
     recientes, antiguos = [], []
     for idx, dist in zip(I[0], D[0]):
         meta = metadata[idx]
-        fecha = None
         try:
-            fecha = datetime.fromisoformat(meta.get("date","")[:10])
+            fecha = datetime.fromisoformat(meta.get("date", "")[:10])
         except:
             fecha = datetime.min
-        rec = {"idx":idx,"dist":dist,"metadata":meta}
-        (recientes if fecha>=limite else antiguos).append(rec)
-    sel = recientes if recientes else antiguos
-    sel = sorted(sel, key=lambda r:r["dist"])[:top_k]
-    return sel
+        entrada = {"idx": idx, "dist": dist, "metadata": meta}
+        (recientes if fecha >= limite else antiguos).append(entrada)
+    seleccionados = recientes if recientes else antiguos
+    return sorted(seleccionados, key=lambda r: r["dist"])[:top_k]
 
 def buscar_faiss(p):
     emb = model.encode(p).astype("float32")
-    D,I = index.search(np.array([emb]),20)
-    sel = filtrar_por_fecha_y_relevancia(I,D,metadata)
-    return "\n".join([f"{r['metadata'].get('subject','')} — {r['metadata'].get('date','')}" for r in sel])
+    D, I = index.search(np.array([emb]), 20)
+    seleccionados = filtrar_por_fecha_y_relevancia(I, D, metadata)
+    return "\n".join([
+        f"{r['metadata'].get('subject', '')} — {r['metadata'].get('date', '')}"
+        for r in seleccionados
+    ])
 
 def scrap_voltereta():
     urls = [
@@ -65,8 +72,11 @@ def scrap_voltereta():
             resp = requests.get(u, timeout=5)
             soup = BeautifulSoup(resp.text, "html.parser")
             paragraphs = soup.select("p")
-            texto += "\n".join(p.get_text().strip() for p in paragraphs if p.get_text().strip()) + "\n"
-        except Exception as e:
+            texto += "\n".join(
+                p.get_text().strip()
+                for p in paragraphs if p.get_text().strip()
+            ) + "\n"
+        except Exception:
             pass
     return texto.strip()
 
@@ -74,40 +84,38 @@ SCRAP_CONTEXT = scrap_voltereta()
 
 def responder_con_gpt(p, contexto=""):
     prompt = f"""
-Eres el asistente de Voltereta. Usa este contexto de su web y FAQs para ayudar al usuario:
+Eres el asistente de Voltereta. Usa este contexto sacado de su web y FAQs para ayudar al usuario:
 
 {SCRAP_CONTEXT}
 
-Información relevante desde FAISS:
+También considera esta información relevante desde FAISS (si aplica):
 {contexto}
 
-Usuario: {p}
+Pregunta del usuario: {p}
 """
-    resp = openai.ChatCompletion.create(
+    respuesta = openai.ChatCompletion.create(
         model="gpt-4o",
         messages=[
-            {"role":"system","content":"Eres un asistente profesional de Voltereta."},
-            {"role":"user","content":prompt}
+            {"role": "system", "content": "Eres un asistente profesional de Voltereta."},
+            {"role": "user", "content": prompt}
         ],
         temperature=0.4
     )
-    return resp.choices[0].message.content.strip()
+    return respuesta.choices[0].message.content.strip()
 
-# === UI Streamlit ===
+# === INTERFAZ STREAMLIT ===
 st.set_page_config(page_title="Voltereta Bot", page_icon="🌮")
 st.title("🤖 Chatbot Voltereta")
 
-user_input = st.text_input("Tu pregunta:")
+user_input = st.text_input("Haz tu pregunta:")
 
 if user_input:
-    # Step 1: override
-    ov = buscar_override(user_input)
-    if ov:
+    respuesta_override = buscar_override(user_input)
+    if respuesta_override:
         log(user_input, "OVERRIDE")
-        st.success(ov)
+        st.success(respuesta_override)
     else:
-        ctx = buscar_faiss(user_input)
-        resp = responder_con_gpt(user_input, ctx)
-        fuente = "FAISS+GPT" if ctx else "GPT puro"
-        log(user_input, fuente)
-        st.info(resp)
+        contexto = buscar_faiss(user_input)
+        respuesta = responder_con_gpt(user_input, contexto)
+        log(user_input, "FAISS+GPT" if contexto else "GPT puro")
+        st.info(respuesta)
