@@ -6,13 +6,25 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import requests
 from bs4 import BeautifulSoup
+import os
+import urllib.request
 
-# === CONFIGURACIÓN GENERAL ===
+# === CONFIGURACIÓN ===
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-index = faiss.read_index("voltereta_index.faiss")
-with open("voltereta_metadata.json", "r", encoding="utf-8") as f:
+# === DESCARGA FAISS DESDE CLOUD STORAGE ===
+INDEX_URL = "https://storage.googleapis.com/voltereta-chatbot-assets/index_streamlit_compatible.faiss"
+INDEX_PATH = "voltereta_index.faiss"
+METADATA_PATH = "voltereta_metadata.json"
+
+if not os.path.exists(INDEX_PATH):
+    urllib.request.urlretrieve(INDEX_URL, INDEX_PATH)
+
+index = faiss.read_index(INDEX_PATH)
+
+with open(METADATA_PATH, "r", encoding="utf-8") as f:
     metadata = json.load(f)
+
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 # === GOOGLE SHEET (Overrides) ===
