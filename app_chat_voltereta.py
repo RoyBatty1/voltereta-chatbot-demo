@@ -1,11 +1,15 @@
-import streamlit as st 
+import streamlit as st
 from openai import OpenAI
 import os, requests, faiss, json
 from sentence_transformers import SentenceTransformer
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+from bs4 import BeautifulSoup
 
-# --- SEGURIDAD: Verifica que no se exponga ningún secreto ---
+# --- CONFIG GENERAL ---
+st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
+
+# Protección ante exposición accidental de secrets
 def verificar_secrets_expuestos():
     texto = st.session_state.get("_streamlit_messages", [])
     for s in st.secrets:
@@ -14,9 +18,6 @@ def verificar_secrets_expuestos():
             st.stop()
 verificar_secrets_expuestos()
 
-# --- CONFIG GENERAL ---
-st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
-st.success("🔐 Entorno seguro configurado correctamente.")
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- FAISS ---
@@ -54,6 +55,27 @@ def check_sheet_override(question):
             return row.get("Respuesta", "").strip()
     return None
 
+# --- SCRAPING DE VOLTERETA ---
+@st.cache_data(ttl=3600)
+def get_voltereta_context():
+    urls = {
+        "restaurantes": "https://www.volteretarestaurante.com/es/",
+        "faq": "https://www.volteretarestaurante.com/en/FAQ/",
+        "cartas": "https://www.volteretarestaurante.com/en/the-experience/"
+    }
+    secciones = []
+    for nombre, url in urls.items():
+        try:
+            r = requests.get(url, timeout=5)
+            soup = BeautifulSoup(r.content, "html.parser")
+            textos = [p.get_text().strip() for p in soup.find_all("p")]
+            relevantes = [t for t in textos if 40 < len(t) < 500]
+            bloque = f"📌 Sección: {nombre}\n" + "\n".join(relevantes[:10])
+            secciones.append(bloque)
+        except Exception as e:
+            secciones.append(f"[Error al cargar {nombre}: {e}]")
+    return "\n\n".join(secciones)
+
 # --- UI ---
 st.markdown("""
     <h1 style='text-align: center; color: #BDA892;'>💬 Chatbot Voltereta</h1>
@@ -71,7 +93,17 @@ if query:
         else:
             embedding = model.encode([query])
             D, I = index.search(embedding, k=3)
-            contexto = "\n".join([f"{i+1}. Resultado relacionado {idx}" for i, idx in enumerate(I[0])])
+
+            faiss_contexto = "\n".join([f"{i+1}. Resultado relacionado {idx}" for i, idx in enumerate(I[0])])
+            web_contexto = get_voltereta_context()
+
+            contexto = f"""
+[Información extraída del índice FAISS]
+{faiss_contexto}
+
+[Contenido relevante desde la web de Voltereta]
+{web_contexto}
+"""
 
             completion = client.chat.completions.create(
                 model="gpt-4o",
