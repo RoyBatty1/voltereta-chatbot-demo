@@ -1,15 +1,15 @@
 import streamlit as st
 from openai import OpenAI
-import os, requests, faiss, json
+import os, requests, faiss, json, io
 from sentence_transformers import SentenceTransformer
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from bs4 import BeautifulSoup
+import fitz  # PyMuPDF
 
 # --- CONFIG GENERAL ---
 st.set_page_config(page_title="Voltereta Chatbot", page_icon="🧳")
 
-# Protección ante exposición accidental de secrets
 def verificar_secrets_expuestos():
     texto = st.session_state.get("_streamlit_messages", [])
     for s in st.secrets:
@@ -61,9 +61,11 @@ def get_voltereta_context():
     urls = {
         "restaurantes": "https://www.volteretarestaurante.com/es/",
         "faq": "https://www.volteretarestaurante.com/en/FAQ/",
-        "cartas": "https://www.volteretarestaurante.com/en/the-experience/"
+        "experiencia": "https://www.volteretarestaurante.com/en/the-experience/"
     }
+
     secciones = []
+
     for nombre, url in urls.items():
         try:
             r = requests.get(url, timeout=5)
@@ -74,6 +76,27 @@ def get_voltereta_context():
             secciones.append(bloque)
         except Exception as e:
             secciones.append(f"[Error al cargar {nombre}: {e}]")
+
+    # PDFs de cartas
+    try:
+        r = requests.get(urls["experiencia"], timeout=5)
+        soup = BeautifulSoup(r.content, "html.parser")
+        pdf_urls = [a['href'] for a in soup.find_all('a', href=True) if a['href'].endswith(".pdf")]
+
+        for i, pdf_url in enumerate(pdf_urls):
+            try:
+                if not pdf_url.startswith("http"):
+                    pdf_url = "https://www.volteretarestaurante.com" + pdf_url
+                pdf_resp = requests.get(pdf_url, timeout=5)
+                pdf_data = fitz.open(stream=pdf_resp.content, filetype="pdf")
+                texto = "\n".join([page.get_text() for page in pdf_data])
+                texto_limpio = "\n".join([l.strip() for l in texto.split("\n") if len(l.strip()) > 30])
+                secciones.append(f"📌 Sección: carta PDF {i+1}\n{texto_limpio[:1000]}...")
+            except Exception as e:
+                secciones.append(f"[Error al procesar PDF {i+1}: {e}]")
+    except Exception as e:
+        secciones.append(f"[Error al detectar PDFs: {e}]")
+
     return "\n\n".join(secciones)
 
 # --- UI ---
@@ -82,7 +105,7 @@ st.markdown("""
     <p style='text-align: center;'>Tu compañero de viaje ✨</p>
 """, unsafe_allow_html=True)
 
-query = st.text_input("¿En qué puedo ayudarte hoy?", placeholder="Pregúntame sobre reservas, destinos o alergias...")
+query = st.text_input("¿En qué puedo ayudarte hoy?", placeholder="Pregúntame sobre reservas, menús, horarios...")
 
 if query:
     with st.spinner("Explorando el mundo para darte la mejor respuesta..."):
@@ -101,7 +124,7 @@ if query:
 [Información extraída del índice FAISS]
 {faiss_contexto}
 
-[Contenido relevante desde la web de Voltereta]
+[Contenido desde la web y cartas de Voltereta]
 {web_contexto}
 """
 
