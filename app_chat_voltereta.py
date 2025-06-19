@@ -66,6 +66,7 @@ def get_voltereta_context():
 
     secciones = []
 
+    # Textos de páginas web
     for nombre, url in urls.items():
         try:
             r = requests.get(url, timeout=5)
@@ -77,7 +78,7 @@ def get_voltereta_context():
         except Exception as e:
             secciones.append(f"[Error al cargar {nombre}: {e}]")
 
-    # PDFs de cartas
+    # PDFs de cartas: solo platos de pasta
     try:
         r = requests.get(urls["experiencia"], timeout=5)
         soup = BeautifulSoup(r.content, "html.parser")
@@ -90,10 +91,14 @@ def get_voltereta_context():
                 pdf_resp = requests.get(pdf_url, timeout=5)
                 pdf_data = fitz.open(stream=pdf_resp.content, filetype="pdf")
                 texto = "\n".join([page.get_text() for page in pdf_data])
-                texto_limpio = "\n".join([l.strip() for l in texto.split("\n") if len(l.strip()) > 30])
-                secciones.append(f"📌 Sección: carta PDF {i+1}\n{texto_limpio[:1000]}...")
+                lineas = [l.strip() for l in texto.split("\n") if 30 < len(l.strip()) < 200]
+                platos_pasta = [l for l in lineas if any(p in l.lower() for p in ["pasta", "espagueti", "macarrón", "tagliatelle", "gnocchi", "fettuccine", "penne"])]
+
+                if platos_pasta:
+                    bloque = f"📌 Platos de pasta detectados en carta PDF {i+1}:\n" + "\n".join(platos_pasta[:8])
+                    secciones.append(bloque)
             except Exception as e:
-                secciones.append(f"[Error al procesar PDF {i+1}: {e}]")
+                secciones.append(f"[Error al procesar carta PDF {i+1}: {e}]")
     except Exception as e:
         secciones.append(f"[Error al detectar PDFs: {e}]")
 
